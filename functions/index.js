@@ -7,8 +7,9 @@ const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
 
 function getUpdateObj(profile) {
-    var d = moment(profile.startDate);
-    d.add(+profile.duration, 'months');
+    var d = profile.startDate ? moment(profile.startDate) : moment();
+    var duration = +profile.duration ? +profile.duration : 0;
+    d.add(duration, 'months');
     var expiredAt = d.toISOString()
     var active = moment() <= d;
     return {
@@ -16,6 +17,16 @@ function getUpdateObj(profile) {
       'account/active': active
    }
 }
+
+exports.triggerSetStarDateOnUserCreation = functions.auth.user()
+    .onCreate(event => {
+      var uid = event.data.uid;
+      console.log('Setting startDate for user', uid);
+      return admin.database().ref('/users/' + uid).update({
+        'profile/startDate': moment().toISOString(),
+        'profile/duration': 0
+      });
+    });
 
 exports.triggerUpdateAccountOnProfileChanged = functions.database.ref('/users/{userId}/profile')
     .onUpdate(event => {
@@ -33,15 +44,28 @@ exports.httpDailyUserExpirationCheck = functions.https.onRequest((req, res) => {
     var users = data.val();
     var updateObj = {};
     Object.keys(users).map(function(id) {
-      var profile = users[id].profile;
-      var account = users[id].account;
-      var userUpdateObj = getUpdateObj(profile);
-      updateObj[id + '/account/active'] = userUpdateObj['account/active'];
-      updateObj[id + '/account/expiredAt'] = userUpdateObj['account/expiredAt'];
+      try{
+        var profile = users[id].profile;
+        var account = users[id].account;
+        var userUpdateObj = getUpdateObj(profile);
+        if(userUpdateObj['account/active'] !== account.active) {
+          updateObj[id + '/account/active'] = userUpdateObj['account/active'];
+        }
+        if(userUpdateObj['account/expiredAt'] !== account.expiredAt) {
+          updateObj[id + '/account/expiredAt'] = userUpdateObj['account/expiredAt'];
+        }
+      }
+      catch(e) {
+        console.error('Error while checking user expiration', users[id], e);
+      }
     });
     admin.database().ref('/users').update(updateObj).then(function() {
-      console.log('User account updated', updateObj);
-      res.json(updateObj);
+      console.log('Following user accounts will be updated', updateObj);
+      res.json({
+        status: 'OK',
+        message: 'Changes to user account is in "data", if empty mean no update',
+        data: updateObj
+      });
     })
   })
 });

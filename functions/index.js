@@ -36,12 +36,11 @@ exports.httpDailyUserExpirationCheck = functions.https.onRequest((req, res) => {
       var profile = users[id].profile;
       var account = users[id].account;
       var userUpdateObj = getUpdateObj(profile);
-      console.log('Calculating update data for user:', users[id]);
-      console.log('Finished with updateObj', userUpdateObj);
       updateObj[id + '/account/active'] = userUpdateObj['account/active'];
       updateObj[id + '/account/expiredAt'] = userUpdateObj['account/expiredAt'];
     });
     admin.database().ref('/users').update(updateObj).then(function() {
+      console.log('User account updated', updateObj);
       res.json(updateObj);
     })
   })

@@ -41,9 +41,8 @@ exports.httpDailyUserExpirationCheck = functions.https.onRequest((req, res) => {
       updateObj[id + '/account/active'] = userUpdateObj['account/active'];
       updateObj[id + '/account/expiredAt'] = userUpdateObj['account/expiredAt'];
     });
-    res.json(updateObj);
-    // admin.database().ref('/users').update(updateObj).then(function() {
-    //   res.json(updateObj);
-    // })
+    admin.database().ref('/users').update(updateObj).then(function() {
+      res.json(updateObj);
+    })
   })
 });

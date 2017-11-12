@@ -2,7 +2,7 @@
 const functions = require('firebase-functions');
 const moment = require('moment');
 
-// The Firebase Admin SDK to access the Firebase Realtime Database. 
+// The Firebase Admin SDK to access the Firebase Realtime Database.
 const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
 
@@ -18,13 +18,15 @@ function getUpdateObj(profile) {
    }
 }
 
-exports.triggerSetStarDateOnUserCreation = functions.auth.user()
+exports.triggerSetupProfileOnUserCreation = functions.auth.user()
     .onCreate(event => {
+      const user = event.data;
       var uid = event.data.uid;
-      console.log('Setting startDate for user', uid);
+      console.log('triggerSetupProfileOnUserCreation for user', uid);
       return admin.database().ref('/users/' + uid).update({
         'profile/startDate': moment().toISOString(),
-        'profile/duration': 0
+        'profile/duration': 0,
+        'profile/email': user.email,
       });
     });
 
@@ -33,7 +35,7 @@ exports.triggerUpdateAccountOnProfileChanged = functions.database.ref('/users/{u
       var profile = event.data.val();
       console.log('Updating user expiration', event.params.userId, profile);
       var updateObj = getUpdateObj(profile);
-      console.log('Updating on node', event.data.ref.parent.key);
+      console.log('Updating on node', event.data.ref.parent.key, updateObj);
       return event.data.ref.parent.update(updateObj);
   });
 
